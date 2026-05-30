@@ -1,0 +1,69 @@
+---
+- name: Setup servers (Docker + Python tooling)
+  hosts: all
+  become: true
+  tags: setup
+
+  pre_tasks:
+    - name: Refresh apt cache
+      ansible.builtin.apt:
+        update_cache: true
+        cache_valid_time: 3600
+
+    - name: Install software-properties-common (needed to enable universe repo)
+      ansible.builtin.apt:
+        name: software-properties-common
+        state: present
+
+    - name: Enable universe repository (python3-debian lives there)
+      ansible.builtin.shell: add-apt-repository -y universe
+      args:
+        executable: /bin/bash
+      when: ansible_distribution == "Ubuntu"
+      changed_when: false
+
+    - name: Refresh apt cache after enabling universe
+      ansible.builtin.apt:
+        update_cache: true
+
+    - name: Install Python SDK for Docker via apt (system site-packages)
+      ansible.builtin.apt:
+        name:
+          - python3-docker
+          - python3-requests
+        state: present
+
+    - name: Stop nginx from apt (replaced by Docker container)
+      ansible.builtin.systemd:
+        name: nginx
+        state: stopped
+        enabled: false
+      ignore_errors: true
+
+  roles:
+    - geerlingguy.pip
+    - geerlingguy.docker
+
+- name: DataDog monitoring agent
+  hosts: webservers
+  become: true
+  tags: setup
+
+  roles:
+    - datadog.datadog
+
+- name: Deploy application container
+  hosts: all
+  become: true
+  tags: deploy
+
+  tasks:
+    - name: Run application container
+      community.docker.docker_container:
+        name: "{{ app_container_name }}"
+        image: "{{ app_image }}"
+        pull: always
+        published_ports:
+          - "{{ app_port }}:80"
+        restart_policy: unless-stopped
+        state: started

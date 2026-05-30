@@ -1,0 +1,36 @@
+---
+ansible_python_interpreter: /usr/bin/python3
+
+pip_install_packages:
+  - name: docker
+  - name: requests
+
+docker_users:
+  - ubuntu
+
+app_image: "nginxdemos/hello:plain-text"
+app_container_name: app
+app_port: 80
+
+# DataDog
+datadog_api_key: "{{ vault_datadog_api_key | default('') }}"
+datadog_site: datadoghq.eu
+datadog_agent_major_version: 7
+
+datadog_config:
+  tags:
+    - "env:production"
+    - "project:hexlet-77"
+    - "role:webserver"
+  log_level: INFO
+
+datadog_checks:
+  http_check:
+    init_config:
+    instances:
+      - name: app-local
+        url: "http://localhost:{{ app_port }}/"
+        timeout: 5
+        tags:
+          - "service:app"
+          - "endpoint:local"

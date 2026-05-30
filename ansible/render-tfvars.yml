@@ -1,0 +1,15 @@
+---
+# Расшифровывает vault и пишет переменные в terraform/secrets.auto.tfvars,
+# который Terraform автоматически подхватывает при init/plan/apply.
+
+- name: Render Terraform variables from Ansible Vault
+  hosts: localhost
+  gather_facts: false
+  connection: local
+
+  tasks:
+    - name: Render terraform/secrets.auto.tfvars from vault
+      ansible.builtin.template:
+        src: secrets.auto.tfvars.j2
+        dest: "{{ playbook_dir }}/../terraform/secrets.auto.tfvars"
+        mode: '0600'
